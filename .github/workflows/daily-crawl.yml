@@ -1,0 +1,42 @@
+name: daily-crawl
+
+# 🔴 이 저장소는 반드시 public 이어야 한다.
+#    public = Actions 무제한 무료. private 로 바뀌면 그 순간부터 분당 과금된다.
+on:
+  schedule:
+    - cron: "20 21 * * *"   # 06:20 KST — 다른 크롤러(07:10)와 겹치지 않게
+  workflow_dispatch: {}
+
+concurrency:
+  group: jeonse-crawl
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run crawler
+        env:
+          DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
+        run: python crawler/crawl.py
+
+      - name: Validate
+        run: python crawler/validate.py
+
+      - name: Commit
+        run: |
+          git config user.name "jeonse-bot"
+          git config user.email "actions@github.com"
+          git add data
+          git diff --cached --quiet && echo "변경 없음" && exit 0
+          git commit -m "data: $(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M KST')"
+          git push
