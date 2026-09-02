@@ -5,7 +5,12 @@ name: daily-crawl
 on:
   schedule:
     - cron: "20 21 * * *"   # 06:20 KST — 다른 크롤러(07:10)와 겹치지 않게
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      bootstrap:
+        description: "12개월 전체 백필 (최초 1회. 약 35분)"
+        type: boolean
+        default: false
 
 concurrency:
   group: jeonse-crawl
@@ -17,7 +22,7 @@ permissions:
 jobs:
   crawl:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,7 +32,7 @@ jobs:
       - name: Run crawler
         env:
           DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
-        run: python crawler/crawl.py
+        run: python crawler/crawl.py ${{ inputs.bootstrap && '--bootstrap' || '' }}
 
       - name: Validate
         run: python crawler/validate.py
